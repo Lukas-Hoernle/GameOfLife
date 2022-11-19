@@ -66,15 +66,8 @@ void evolve(double* currentfield, double* newfield, int w, int h) {
     #pragma opm parallel num_threads(MAX);
     for (x = 0; x < w; x++) {
       
-      int neighboursAlive=0;
-      for(int neighbourX=-1;neighbourX<2;++neighbourX){
-        for(int neighbourY=-1;neighbourY<2;++neighbourY){
-        if(neighbourX == 0 && neighbourY == 0)
-        continue;
-
-        neighboursAlive += currentfield[calcIndex(w,x + neighbourX, y + neighbourY)];        
-        } 
-      }
+      int neighboursAlive=calculateNeighbours(x,y);
+      
       #pragma omp barrier
       switch(neighboursAlive){
         case(3): newfield[calcIndex(w,x,y)]=1;break;
@@ -95,7 +88,18 @@ void filling(double* currentfield, int w, int h) {
   }
 }
  
+int calculateNeighbours(int x, int y){
+  neighboursAlive=0;
+  for(int neighbourX=-1;neighbourX<2;++neighbourX){
+        for(int neighbourY=-1;neighbourY<2;++neighbourY){
+        if(neighbourX == 0 && neighbourY == 0)
+        continue;
 
+        neighboursAlive += currentfield[calcIndex(w,x + neighbourX, y + neighbourY)];        
+        } 
+      }
+      return neighboursAlive
+}
 
 
 void game(int w, int h) {
