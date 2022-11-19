@@ -86,7 +86,7 @@ void filling(double* currentfield, int w, int h) {
 }
  
 int calculateNeighbours(int x, int y,int fieldsize){
-  if(--x % w ==0){
+  if(--x % w ==1){
     y--;
     }
   neighboursAlive=0;
