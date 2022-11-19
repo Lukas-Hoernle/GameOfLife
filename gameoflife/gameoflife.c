@@ -9,7 +9,6 @@
 #include <sys/time.h>
 
 #define calcIndex(width, x,y)  ((y)*(width) + (x))
-
 long TimeSteps = 100;
 
 void writeVTK2(long timestep, double *data, char prefix[1024], int w, int h) {
@@ -66,16 +65,14 @@ void evolve(double* currentfield, double* newfield, int w, int h) {
     #pragma opm parallel num_threads(MAX);
     for (x = 0; x < w; x++) {
       
-      int neighboursAlive=calculateNeighbours(x,y);
+      int neighboursAlive=calculateNeighbours(x,y,w,h);
       
       #pragma omp barrier
       switch(neighboursAlive){
         case(3): newfield[calcIndex(w,x,y)]=1;break;
         case(2): newfield[calcIndex(w,x,y)]=currentfield[calcIndex(w,x,y)];break;
         default: newfield[calcIndex(w,x,y)]=0;break;
-      }
-      //TODO FIXME impletent rules and assign new value
-      
+      }      
       //newfield[calcIndex(w, x,y)] = !newfield[calcIndex(w, x,y)];
     }
 }
@@ -88,7 +85,10 @@ void filling(double* currentfield, int w, int h) {
   }
 }
  
-int calculateNeighbours(int x, int y){
+int calculateNeighbours(int x, int y,int fieldsize){
+  if(--x % w ==0){
+    y--;
+    }
   neighboursAlive=0;
   for(int neighbourX=-1;neighbourX<2;++neighbourX){
         for(int neighbourY=-1;neighbourY<2;++neighbourY){
@@ -131,7 +131,7 @@ void game(int w, int h) {
 }
  
 int main(int c, char **v) {
-  int w = 0, h = 0;
+  int w = 10, h = 10;
   if (c > 1) w = atoi(v[1]); ///< read width
   if (c > 2) h = atoi(v[2]); ///< read height
   if (w <= 0) w = 30; ///< default width
