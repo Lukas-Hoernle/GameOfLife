@@ -60,17 +60,18 @@ void show(double* currentfield, int w, int h) {
  
 
 void evolve(double* currentfield, double* newfield, int w, int h){
-  int x,y;
+  int x=0,y=0;
   int neighboursAlive;
-  //#pragma omp parallel firstprivate(currentfield,x,y,neighboursAlive) shared(newfield,w, h) num_threads(w*h) 
+  #pragma omp parallel firstprivate(currentfield,x,y,neighboursAlive) shared(newfield,w, h) num_threads(w*h) 
   {
   
-  for (y = 0; y < h; y++) {
-    for (x = 0; x < w; x++) {
+  for (y; y < h; y++) {
+    for (x; x < w; x++) {
 
       neighboursAlive=calculateNeighbours(x,y,w,h,currentfield);
-      //#pragma omp barrier
-      }
+      /*if(neighboursAlive!=2){
+        #pragma omp barrier
+      }*/
       switch(neighboursAlive){
         case(3): newfield[calcIndex(w,x,y)]=1;break;
         case(2): newfield[calcIndex(w,x,y)]=currentfield[calcIndex(w,x,y)];break;
