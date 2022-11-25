@@ -59,26 +59,28 @@ void show(double* currentfield, int w, int h) {
 }
  
 
-void evolve(double* currentfield, double* newfield, int w, int h) {
+void evolve(double* currentfield, double* newfield, int w, int h){
   int x,y;
+  int neighboursAlive;
+  //#pragma omp parallel firstprivate(currentfield,x,y,neighboursAlive) shared(newfield,w, h) num_threads(w*h) 
+  {
+  
   for (y = 0; y < h; y++) {
-    #pragma opm parallel num_threads(MAX);
     for (x = 0; x < w; x++) {
-      #pragma omp parallel private (w,h) {
-        #pragma omp parallel num_threads(w*h) shared(newfield)
 
-      int neighboursAlive=calculateNeighbours(x,y,w,h);
+      neighboursAlive=calculateNeighbours(x,y,w,h,currentfield);
+      //#pragma omp barrier
       }
-      #pragma omp barrier
       switch(neighboursAlive){
         case(3): newfield[calcIndex(w,x,y)]=1;break;
         case(2): newfield[calcIndex(w,x,y)]=currentfield[calcIndex(w,x,y)];break;
         default: newfield[calcIndex(w,x,y)]=0;break;
-      }      
+      }
       //newfield[calcIndex(w, x,y)] = !newfield[calcIndex(w, x,y)];
     }
 }
 }
+
  
 void filling(double* currentfield, int w, int h) {
   int i;
@@ -87,11 +89,11 @@ void filling(double* currentfield, int w, int h) {
   }
 }
  
-int calculateNeighbours(int x, int y,int fieldsize){
+int calculateNeighbours(int x, int y,int fieldsize,int w,int h,double* currentfield){
   if(--x % w ==1){
     y--;
     }
-  neighboursAlive=0;
+  int neighboursAlive=0;
   for(int neighbourX=-1;neighbourX<2;++neighbourX){
         for(int neighbourY=-1;neighbourY<2;++neighbourY){
         if(neighbourX == 0 && neighbourY == 0)
@@ -100,7 +102,7 @@ int calculateNeighbours(int x, int y,int fieldsize){
         neighboursAlive += currentfield[calcIndex(w,x + neighbourX, y + neighbourY)];        
         } 
       }
-      return neighboursAlive
+      return neighboursAlive;
 }
 
 
