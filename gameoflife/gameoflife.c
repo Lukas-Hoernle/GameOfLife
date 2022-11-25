@@ -64,9 +64,11 @@ void evolve(double* currentfield, double* newfield, int w, int h) {
   for (y = 0; y < h; y++) {
     #pragma opm parallel num_threads(MAX);
     for (x = 0; x < w; x++) {
-      
+      #pragma omp parallel private (w,h) {
+        #pragma omp parallel num_threads(w*h) shared(newfield)
+
       int neighboursAlive=calculateNeighbours(x,y,w,h);
-      
+      }
       #pragma omp barrier
       switch(neighboursAlive){
         case(3): newfield[calcIndex(w,x,y)]=1;break;
