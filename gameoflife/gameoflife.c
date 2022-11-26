@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <sys/time.h>
+#include <omp.h>
 
 #define calcIndex(width, x,y)  ((y)*(width) + (x))
 long TimeSteps = 100;
@@ -57,30 +58,47 @@ void show(double* currentfield, int w, int h) {
   }
   fflush(stdout);
 }
- 
 
-void evolve(double* currentfield, double* newfield, int w, int h){
-  int x=0,y=0;
-  int neighboursAlive;
-  #pragma omp parallel firstprivate(currentfield,x,y,neighboursAlive) shared(newfield,w, h) num_threads(w*h) 
+int calculateNeighbours(int x, int y,int w,int h,double* currentfield){
+  int neighboursAlive=0;
+  for(int neighbourX=-1;neighbourX<2;++neighbourX){
+      for(int neighbourY=-1;neighbourY<2;++neighbourY){
+        if(neighbourX == 0 && neighbourY == 0){
+          continue;
+        }
+        if(x % w ==1){//correct y if x overflow 
+          y--;
+        }
+        if(y%h==1){//correct x if y overflow 
+          x--;
+        }
+        neighboursAlive += currentfield[calcIndex(w,x + neighbourX, y + neighbourY)];        
+      } 
+    }
+    return neighboursAlive;
+} 
+
+void evolve(double* currentfield, double* newfield, int w, int h,int xThreadNum,int yThreadNum){
+  int x=0,y=0,neighboursAlive=0;
+  #pragma omp parallel firstprivate(currentfield,x,y,neighboursAlive) shared(newfield,w,h) num_threads(5) 
   {
-  
-  for (y; y < h; y++) {
-    for (x; x < w; x++) {
-
+   int xStart = omp_get_thread_num() % w;
+   int yStart = omp_get_thread_num() / x;
+   int xEnd = omp_get_thread_num() % w + (w/xThreadNum);
+   int yEnd = omp_get_thread_num() / x + (h/yThreadNum);
+  for(x=xStart;x<=xEnd;x++){
+    for(y=yStart;y<=yEnd;y++){
       neighboursAlive=calculateNeighbours(x,y,w,h,currentfield);
-      /*if(neighboursAlive!=2){
-        #pragma omp barrier
-      }*/
       switch(neighboursAlive){
         case(3): newfield[calcIndex(w,x,y)]=1;break;
         case(2): newfield[calcIndex(w,x,y)]=currentfield[calcIndex(w,x,y)];break;
         default: newfield[calcIndex(w,x,y)]=0;break;
       }
-      //newfield[calcIndex(w, x,y)] = !newfield[calcIndex(w, x,y)];
     }
+  }
+  }
 }
-}
+
 
  
 void filling(double* currentfield, int w, int h) {
@@ -90,34 +108,17 @@ void filling(double* currentfield, int w, int h) {
   }
 }
  
-int calculateNeighbours(int x, int y,int fieldsize,int w,int h,double* currentfield){
-  if(--x % w ==1){
-    y--;
-    }
-  int neighboursAlive=0;
-  for(int neighbourX=-1;neighbourX<2;++neighbourX){
-        for(int neighbourY=-1;neighbourY<2;++neighbourY){
-        if(neighbourX == 0 && neighbourY == 0)
-        continue;
-
-        neighboursAlive += currentfield[calcIndex(w,x + neighbourX, y + neighbourY)];        
-        } 
-      }
-      return neighboursAlive;
-}
 
 
-void game(int w, int h) {
+
+void game(int w, int h,int xThreadNum,int yThreadNum) {
   double *currentfield = calloc(w*h, sizeof(double));
   double *newfield     = calloc(w*h, sizeof(double));
-  
-  //printf("size unsigned %d, size long %d\n",sizeof(float), sizeof(long));
-  
   filling(currentfield, w, h);
   long t;
   for (t=0;t<TimeSteps;t++) {
     show(currentfield, w, h);
-    evolve(currentfield, newfield, w, h);
+    evolve(currentfield, newfield, w, h,xThreadNum,yThreadNum);
     
     printf("%ld timestep\n",t);
     writeVTK2(t,currentfield,"gol", w, h);
@@ -129,17 +130,18 @@ void game(int w, int h) {
     currentfield = newfield;
     newfield = temp;
   }
-  
   free(currentfield);
   free(newfield);
   
 }
  
 int main(int c, char **v) {
-  int w = 10, h = 10;
-  if (c > 1) w = atoi(v[1]); ///< read width
-  if (c > 2) h = atoi(v[2]); ///< read height
-  if (w <= 0) w = 30; ///< default width
-  if (h <= 0) h = 30; ///< default height
-  game(w, h);
+  int xThreadNum=1,yThreadNum=1,xThreadSize=1,yThreadSize=1;
+  if (c > 1) xThreadNum = atoi(v[1]); ///< read 
+  if (c > 2) yThreadNum = atoi(v[2]); ///< read 
+  if (c > 3) xThreadSize = atoi(v[3]); ///< read //die Dinger übergeben dann in der for schleife festlegen, dass von xstart bis xende geht und die aus diesen dingens berechnen
+  if (c > 4) yThreadSize = atoi(v[4]); ///< read 
+  int w = xThreadNum*xThreadSize;
+  int h =yThreadNum*yThreadSize;
+  game(w, h,xThreadNum,yThreadNum);
 }
