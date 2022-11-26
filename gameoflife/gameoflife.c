@@ -10,7 +10,7 @@
 #include <omp.h>
 
 #define calcIndex(width, x,y)  ((y)*(width) + (x))
-long TimeSteps = 100;
+long TimeSteps = 25;
 
 void writeVTK2(long timestep, double *data, char prefix[1024], int w, int h) {
   char filename[2048];  
@@ -47,7 +47,6 @@ void writeVTK2(long timestep, double *data, char prefix[1024], int w, int h) {
   fclose(fp);
 }
 
-
 void show(double* currentfield, int w, int h) {
   printf("\033[H");
   int x,y;
@@ -82,10 +81,13 @@ void evolve(double* currentfield, double* newfield, int w, int h,int xThreadNum,
   int x=0,y=0,neighboursAlive=0;
   #pragma omp parallel firstprivate(currentfield,x,y,neighboursAlive) shared(newfield,w,h) num_threads(5) 
   {
-   int xStart = omp_get_thread_num() % w;
+   int xStart = (w/xThreadNum) * (omp_get_thread_num()%w);
+  #pragma omp critical {
+    printf("%d", x);
+  }
    int yStart = omp_get_thread_num() / x;
-   int xEnd = omp_get_thread_num() % w + (w/xThreadNum);
-   int yEnd = omp_get_thread_num() / x + (h/yThreadNum);
+   int xEnd = xStart+(w/xThreadNum);
+   int yEnd = yStart+(h/yThreadNum);
   for(x=xStart;x<=xEnd;x++){
     for(y=yStart;y<=yEnd;y++){
       neighboursAlive=calculateNeighbours(x,y,w,h,currentfield);
@@ -98,8 +100,6 @@ void evolve(double* currentfield, double* newfield, int w, int h,int xThreadNum,
   }
   }
 }
-
-
  
 void filling(double* currentfield, int w, int h) {
   int i;
@@ -107,9 +107,6 @@ void filling(double* currentfield, int w, int h) {
     currentfield[i] = (rand() < RAND_MAX / 10) ? 1 : 0; ///< init domain randomly
   }
 }
- 
-
-
 
 void game(int w, int h,int xThreadNum,int yThreadNum) {
   double *currentfield = calloc(w*h, sizeof(double));
